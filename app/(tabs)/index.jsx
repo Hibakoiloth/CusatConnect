@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    marginTop: StatusBar.currentHeight + 20, // Add extra space at the top
+    marginTop: StatusBar.currentHeight + 15, // Add extra space at the top
   },
   navbar: {
     flexDirection: 'row',
