@@ -14,7 +14,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    'LexendDeca': require('../assets/fonts/Lexend_Deca/LexendDeca-VariableFont_wght.ttf'),
+    'Playfair': require('../assets/fonts/Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf'),
+    'TTRamillas': require('../assets/fonts/tt_ramillas/TT Ramillas Trial Italic.ttf'),
   });
 
   useEffect(() => {

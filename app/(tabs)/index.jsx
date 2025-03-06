@@ -39,7 +39,7 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.header}>
-          <ThemedText style={styles.headerText}>Explore recent circulars.</ThemedText>
+          <Text style={styles.headerText}>Explore recent circulars.</Text>
         </View>
         
         <View style={styles.notificationsContainer}>
@@ -74,56 +74,75 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    marginTop: StatusBar.currentHeight + 15, // Add extra space at the top
+    marginTop: StatusBar.currentHeight,
   },
   navbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 15,
+    paddingTop: 15,
+    paddingBottom: 10,
     backgroundColor: '#000',
   },
   navTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
+    fontFamily: 'TTRamillas',
+    letterSpacing: 1,
   },
   menuButton: {
     padding: 8,
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingTop: 30,
+    paddingBottom: 30,
   },
   headerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 45,
+    fontWeight: '400',
     color: '#fff',
-    lineHeight: 38,
+    lineHeight: 48,
+    fontFamily: 'TTRamillas',
+    letterSpacing: 1,
+    textAlign: 'left',
   },
   notificationsContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    marginTop: 10,
   },
   notificationBox: {
     backgroundColor: '#fff',
     borderRadius: 12,
     maxHeight: '100%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   notificationItem: {
-    padding: 16,
+    padding: 20,
   },
   notificationTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '500',
     color: '#000',
-    marginBottom: 8,
+    marginBottom: 10,
+    fontFamily: 'TTRamillas',
+    letterSpacing: 0.3,
   },
   notificationDescription: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    color: '#3B3B3B',
     marginBottom: 12,
+    fontFamily: 'TTRamillas',
+    lineHeight: 22,
   },
   notificationFooter: {
     flexDirection: 'row',
@@ -131,18 +150,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationDate: {
-    fontSize: 12,
-    color: '#888',
+    fontSize: 13,
+    color: '#666',
+    fontFamily: 'LexendDeca',
+    letterSpacing: 0.2,
   },
   viewButton: {
-    backgroundColor: '#4A3F44',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: '#9A8174',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   viewButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
+    fontFamily: 'LexendDeca',
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   divider: {
     height: 1,
