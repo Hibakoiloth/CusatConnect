@@ -1,19 +1,16 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from "react-native";
-import { useState } from "react";
-import { router } from "expo-router";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert, Image, ActivityIndicator, SafeAreaView } from "react-native";
+import { useState, useEffect } from "react";
+import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
-import 'react-native-url-polyfill/auto';
-
-// Initialize the Supabase client
-const supabaseUrl = 'https://ygnogiyptesupksihfyb.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnbm9naXlwdGVzdXBrc2loZnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExMzIyNzksImV4cCI6MjA1NjcwODI3OX0._044tK7NCQaoC7g27V3pd2k1e9MdW0esBNtZHjmLzB8';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../utils/supabaseClient';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 
 export default function LoginScreen() {
+  const { userType = 'Student' } = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (email === '' || password === '') {
@@ -35,8 +32,7 @@ export default function LoginScreen() {
       // Store user session
       await AsyncStorage.setItem('user-session', JSON.stringify(data.session));
       await AsyncStorage.setItem('isAuthenticated', 'true');
-      
-      console.log('Login successful', data);
+      await AsyncStorage.setItem('userType', userType as string);
       
       // Navigate to the main app
       router.replace('/(tabs)');
@@ -49,94 +45,207 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = async () => {
-    router.push('/signup' as any); // Navigate to signup screen
-    // Alternatively, you could implement signup functionality right here
+    router.push({
+      pathname: '/signup',
+      params: { userType }
+    });
   };
 
   const handlePasswordReset = () => {
-    router.push('/reset-password' as any); // Navigate to password reset screen
+    router.push('/reset-password' as any);
+  };
+
+  const getIcon = () => {
+    switch(userType) {
+      case 'Student':
+        return <Ionicons name="school" size={20} color="#E8D3B9" />;
+      case 'Teacher':
+        return <FontAwesome5 name="chalkboard-teacher" size={20} color="#E8D3B9" />;
+      case 'Office':
+        return <MaterialIcons name="business" size={20} color="#E8D3B9" />;
+      default:
+        return <Ionicons name="person" size={20} color="#E8D3B9" />;
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <Text style={styles.title}>CUSAT Connect</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Login'}</Text>
-      </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#2D1E14" />
       
-      <View style={styles.linksContainer}>
-        <TouchableOpacity onPress={handlePasswordReset}>
-          <Text style={styles.link}>Forgot Password?</Text>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#E8D3B9" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleSignUp}>
-          <Text style={styles.link}>Create Account</Text>
-        </TouchableOpacity>
+        <View style={styles.logoContainer}>
+          {getIcon()}
+        </View>
       </View>
-    </View>
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>{userType} Login</Text>
+        
+        <View style={styles.inputContainer}>
+          <Ionicons name="mail" size={20} color="#E8D3B9" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#8B7D6B"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed" size={20} color="#E8D3B9" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#8B7D6B"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity 
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.eyeIcon}
+          >
+            <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#E8D3B9" />
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.forgotPassword} 
+          onPress={handlePasswordReset}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#E8D3B9" />
+          ) : (
+            <Text style={styles.loginButtonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+        
+        <View style={styles.signupContainer}>
+          <Text style={styles.signupText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={handleSignUp}>
+            <Text style={styles.signupLink}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#000000",
+  },
+  header: {
+    backgroundColor: "#2D1E14",
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    padding: 5,
+  },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#2D1E14',
+    borderRadius: 20,
+    marginLeft: 15,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  formContainer: {
+    flex: 1,
     padding: 20,
-    backgroundColor: '#000',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
+  },
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 40,
-    color: '#fff',
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#E8D3B9",
+    marginBottom: 30,
+    textAlign: "center",
+    fontStyle: 'italic',
+    fontFamily: 'serif',
   },
-  input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D1E14',
     borderRadius: 10,
     marginBottom: 15,
-    paddingHorizontal: 15,
-    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#4F392D',
   },
-  button: {
-    backgroundColor: '#007AFF',
+  inputIcon: {
+    padding: 10,
+  },
+  input: {
+    flex: 1,
     padding: 15,
-    borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  linksContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 20,
-  },
-  link: {
-    color: '#007AFF',
     fontSize: 16,
-    paddingVertical: 5,
+    color: '#E8D3B9',
+  },
+  eyeIcon: {
+    padding: 10,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: "#E8D3B9",
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  loginButton: {
+    backgroundColor: "#4F392D",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  loginButtonText: {
+    color: "#E8D3B9",
+    fontSize: 18,
+    fontWeight: "bold",
+    fontStyle: 'italic',
+  },
+  signupContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  signupText: {
+    color: "#8B7D6B",
+    fontSize: 14,
+  },
+  signupLink: {
+    color: "#E8D3B9",
+    fontSize: 14,
+    fontWeight: "bold",
+    fontStyle: 'italic',
   },
 });
