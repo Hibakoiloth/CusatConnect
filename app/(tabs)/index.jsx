@@ -2,8 +2,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, SafeAr
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    router.replace('/(auth)/index');
+  };
+
   const notifications = [
     {
       title: 'Supplementary Exam notification',
@@ -33,9 +40,9 @@ export default function HomeScreen() {
       <View style={styles.mainContent}>
         <View style={styles.navbar}>
           <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
-          <Pressable style={styles.menuButton}>
-            <Ionicons name="menu" size={24} color="white" />
-          </Pressable>
+          <TouchableOpacity style={styles.menuButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="white" />
+          </TouchableOpacity>
         </View>
         
         <View style={styles.header}>
