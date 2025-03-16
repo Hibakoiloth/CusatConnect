@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar, SafeAreaView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 
 export default function SignupScreen() {
@@ -34,37 +34,15 @@ export default function SignupScreen() {
 
       setLoading(true);
 
-      // If signing up as a student, verify email exists in student table
-      if (userType === 'Student') {
-        const { data: studentData, error: studentError } = await supabase
-          .from('student')
-          .select('s_email')
-          .eq('s_email', email.toLowerCase().trim())
-          .maybeSingle();
-
-        if (studentError) {
-          console.error('Student verification error:', studentError);
-          Alert.alert('Error', 'Failed to verify student email. Please try again.');
-          setLoading(false);
-          return;
-        }
-
-        if (!studentData) {
-          Alert.alert(
-            'Invalid Student Email',
-            'This email is not registered in the student database. Please use your official student email or contact administration.'
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
       // Sign up with Supabase
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          // For development, you can skip email verification
+          emailRedirectTo: 'cusatconnect://login',
           data: {
+            // Store user type and other metadata
             userType: userType,
             name: email.split('@')[0],
           }
@@ -73,12 +51,55 @@ export default function SignupScreen() {
 
       if (error) throw error;
 
-      Alert.alert(
-        'Account Created',
-        'Your account has been created successfully. Please check your email to verify your account.',
-        [{ text: 'OK', onPress: () => router.replace('/login') }]
-      );
+      console.log('Signup successful', data);
       
+      if (data.session) {
+        // User is automatically signed in
+        await AsyncStorage.setItem('user-session', JSON.stringify(data.session));
+        await AsyncStorage.setItem('isAuthenticated', 'true');
+        await AsyncStorage.setItem('userType', userType as string);
+        
+        // Navigate to the main app
+        router.replace('/(tabs)');
+        
+        Alert.alert(
+          'Account Created',
+          'Your account has been created successfully. Please verify your email when you receive the verification link.'
+        );
+      } else {
+        // Email confirmation required but we'll let user proceed anyway for testing
+        Alert.alert(
+          'Account Created',
+          'Your account has been created. For development purposes, you can proceed to login now.',
+          [
+            { 
+              text: 'Login Now', 
+              onPress: async () => {
+                // For development, try to sign in immediately
+                try {
+                  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                  });
+                  
+                  if (signInError) throw signInError;
+                  
+                  if (signInData.session) {
+                    await AsyncStorage.setItem('user-session', JSON.stringify(signInData.session));
+                    await AsyncStorage.setItem('isAuthenticated', 'true');
+                    await AsyncStorage.setItem('userType', userType as string);
+                    router.replace('/(tabs)');
+                  }
+                } catch (signInErr: any) {
+                  console.error('Auto-login error:', signInErr.message);
+                  router.replace('/login');
+                }
+              } 
+            },
+            { text: 'Go to Login', onPress: () => router.replace('/login') }
+          ]
+        );
+      }
     } catch (error: any) {
       console.error('Signup error:', error.message);
       Alert.alert('Signup Failed', error.message);
@@ -266,7 +287,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   signupButton: {
-    backgroundColor: '#2D1E14',
+    backgroundColor: '#4F392D',
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',

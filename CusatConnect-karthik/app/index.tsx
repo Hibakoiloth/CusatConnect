@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   loginButton: {
-    backgroundColor: '#2D1E14',
+    backgroundColor: '#4F392D',
     borderRadius: 10,
     padding: 15,
     flexDirection: 'row',

@@ -1,31 +1,65 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, SafeAreaView, StatusBar } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function HomeScreen() {
-  const notifications = [
-    {
-      title: 'Supplementary Exam notification',
-      description: 'This font is perfect for use in magazines, in the fashion industry, in the branding of premium goods and services.',
-      date: '20/12/24'
-    },
-    {
-      title: 'Supplementary Exam notification',
-      description: 'This font is perfect for use in magazines, in the fashion industry, in the branding of premium goods and services.',
-      date: '20/12/24'
-    },
-    {
-      title: 'Supplementary Exam notification',
-      description: 'This font is perfect for use in magazines, in the fashion industry, in the branding of premium goods and services.',
-      date: '20/12/24'
-    },
-    {
-      title: 'Supplementary Exam notification',
-      description: 'This font is perfect for use in magazines, in the fashion industry, in the branding of premium goods and services.',
-      date: '20/12/24'
+  const [circulars, setCirculars] = useState([]);
+
+  useEffect(() => {
+    fetchCirculars();
+  }, []);
+
+  const fetchCirculars = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('circulars')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCirculars(data || []);
+    } catch (error) {
+      console.error('Error fetching circulars:', error.message);
     }
-  ];
+  };
+
+  const handleViewPDF = async (filePath) => {
+    try {
+      console.log('Opening file:', filePath);
+      
+      const { data, error } = supabase.storage
+        .from('circulars')
+        .getPublicUrl(filePath);
+
+      if (error) {
+        console.error('Error getting public URL:', error.message);
+        throw error;
+      }
+
+      if (!data?.publicUrl) {
+        console.error('No public URL returned');
+        throw new Error('Could not get file URL');
+      }
+
+      console.log('Opening URL:', data.publicUrl);
+      await WebBrowser.openBrowserAsync(data.publicUrl);
+    } catch (error) {
+      console.error('Error in handleViewPDF:', error);
+      alert('Failed to open PDF: ' + error.message);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -47,19 +81,29 @@ export default function HomeScreen() {
             style={styles.notificationBox}
             showsVerticalScrollIndicator={false}
           >
-            {notifications.map((notification, index) => (
-              <View key={index} style={styles.notificationItem}>
-                <ThemedText style={styles.notificationTitle}>{notification.title}</ThemedText>
-                <ThemedText style={styles.notificationDescription}>{notification.description}</ThemedText>
+            {circulars.map((circular, index) => (
+              <View key={circular.id} style={styles.notificationItem}>
+                <ThemedText style={styles.notificationTitle}>{circular.title}</ThemedText>
+                <ThemedText style={styles.notificationDescription}>{circular.description || 'No description provided.'}</ThemedText>
                 <View style={styles.notificationFooter}>
-                  <ThemedText style={styles.notificationDate}>Published on: {notification.date}</ThemedText>
-                  <TouchableOpacity style={styles.viewButton}>
+                  <ThemedText style={styles.notificationDate}>
+                    Published on: {formatDate(circular.created_at)}
+                  </ThemedText>
+                  <TouchableOpacity 
+                    style={styles.viewButton}
+                    onPress={() => handleViewPDF(circular.file_path)}
+                  >
                     <Text style={styles.viewButtonText}>View</Text>
                   </TouchableOpacity>
                 </View>
-                {index < notifications.length - 1 && <View style={styles.divider} />}
+                {index < circulars.length - 1 && <View style={styles.divider} />}
               </View>
             ))}
+            {circulars.length === 0 && (
+              <View style={styles.emptyState}>
+                <ThemedText style={styles.emptyStateText}>No circulars available.</ThemedText>
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -180,5 +224,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#eee',
     marginTop: 16,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'TTRamillas',
   },
 });
