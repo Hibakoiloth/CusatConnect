@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -102,6 +102,48 @@ export default function StaffHomeScreen() {
     });
   };
 
+  const handleDeleteCircular = async (id: number, filePath: string) => {
+    Alert.alert(
+      "Delete Circular",
+      "Are you sure you want to delete this circular?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Delete from storage first
+              const { error: storageError } = await supabase.storage
+                .from('circulars')
+                .remove([filePath]);
+
+              if (storageError) throw storageError;
+
+              // Then delete from database
+              const { error: dbError } = await supabase
+                .from('circulars')
+                .delete()
+                .eq('id', id);
+
+              if (dbError) throw dbError;
+
+              // Refresh the circulars list and count
+              fetchActiveCirculars();
+              fetchActiveCircularsCount();
+            } catch (error: any) {
+              console.error('Error deleting circular:', error.message);
+              alert('Failed to delete circular');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const stats: Stat[] = [
     {
       title: 'Active Circulars',
@@ -199,7 +241,15 @@ export default function StaffHomeScreen() {
               <ScrollView style={styles.circularsList}>
                 {activeCirculars.map((circular, index) => (
                   <View key={circular.id} style={styles.circularItem}>
-                    <Text style={styles.circularTitle}>{circular.title}</Text>
+                    <View style={styles.circularHeader}>
+                      <Text style={styles.circularTitle}>{circular.title}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteCircular(circular.id, circular.file_path)}
+                        style={styles.deleteButton}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#FF4444" />
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.circularDescription}>
                       {circular.description || 'No description provided.'}
                     </Text>
@@ -385,6 +435,12 @@ const styles = StyleSheet.create({
   circularItem: {
     marginBottom: 20,
   },
+  circularHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
   circularTitle: {
     fontSize: 20,
     fontWeight: '500',
@@ -432,5 +488,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontFamily: 'TTRamillas',
+  },
+  deleteButton: {
+    padding: 5,
   },
 }); 
