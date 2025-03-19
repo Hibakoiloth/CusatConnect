@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -38,10 +39,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
+        name="records"
         options={{
-          title: 'Calendar',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="calendar" color={color} />,
+          title: 'Records',
+          tabBarIcon: ({ color }) => <Ionicons name="document-text" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Notifications',
+          tabBarIcon: ({ color }) => <Ionicons name="notifications" size={28} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -49,13 +57,6 @@ export default function TabLayout() {
         options={{
           title: 'Help',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="questionmark.circle.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tabs>

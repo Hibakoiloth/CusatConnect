@@ -4,9 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const [circulars, setCirculars] = useState([]);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     fetchCirculars();
@@ -61,16 +63,56 @@ export default function HomeScreen() {
     });
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.replace('/');
+    } catch (error) {
+      console.error('Error logging out:', error.message);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={styles.mainContent}>
         <View style={styles.navbar}>
           <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
-          <Pressable style={styles.menuButton}>
+          <Pressable 
+            style={styles.menuButton}
+            onPress={() => setShowMenu(!showMenu)}
+          >
             <Ionicons name="menu" size={24} color="white" />
           </Pressable>
         </View>
+
+        {/* Dropdown Menu */}
+        {showMenu && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMenu(false);
+                // Navigate to profile or show profile modal
+              }}
+            >
+              <Ionicons name="person" size={20} color="#000" />
+              <Text style={styles.menuItemText}>Profile</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMenu(false);
+                handleLogout();
+              }}
+            >
+              <Ionicons name="log-out" size={20} color="#000" />
+              <Text style={styles.menuItemText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         <View style={styles.header}>
           <Text style={styles.headerText}>Explore recent circulars.</Text>
@@ -233,5 +275,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontFamily: 'TTRamillas',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    minWidth: 150,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  menuItemText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#000',
+    fontFamily: 'TTRamillas',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 4,
   },
 });
