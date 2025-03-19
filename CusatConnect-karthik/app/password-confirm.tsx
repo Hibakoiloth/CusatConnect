@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, SafeAreaView, Animated, Dimensions, Easing, Modal, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -58,11 +59,16 @@ const CustomAlert = ({ visible, title, message, buttons, onClose }: CustomAlertP
   );
 };
 
-export default function ResetPasswordScreen() {
-  const { email: initialEmail = '' } = useLocalSearchParams();
-  const [email, setEmail] = useState(initialEmail as string);
+export default function PasswordConfirmScreen() {
+  const params = useLocalSearchParams();
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenType, setTokenType] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Custom alert state
   const [alertVisible, setAlertVisible] = useState(false);
@@ -123,52 +129,96 @@ export default function ResetPasswordScreen() {
     outputRange: [0, -45] // Increase vertical movement
   });
 
-  // Add state for role selection
-  const [selectedRole, setSelectedRole] = useState<string>('student');
+  // Parse token on component mount
+  useEffect(() => {
+    // Attempt to get token from URL params
+    if (params.token && typeof params.token === 'string') {
+      setToken(params.token);
+    }
+    if (params.type && typeof params.type === 'string') {
+      setTokenType(params.type);
+    }
+    if (params.email && typeof params.email === 'string') {
+      setUserEmail(params.email);
+    }
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      showCustomAlert('Error', 'Please enter your email address');
+    // For web platform - extract tokens from URL
+    if (Platform.OS === 'web') {
+      try {
+        // Get URL search params for web
+        const urlSearchParams = new URLSearchParams(window.location.search);
+        const accessToken = urlSearchParams.get('access_token');
+        const refreshToken = urlSearchParams.get('refresh_token');
+        const type = urlSearchParams.get('type');
+        
+        console.log("Web URL params found:", { 
+          hasAccessToken: !!accessToken, 
+          type,
+          url: window.location.href
+        });
+        
+        if (accessToken && type === 'recovery') {
+          console.log("Setting session from web URL");
+          // Set the session manually for web flow
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+        }
+      } catch (error) {
+        console.error("Error parsing web URL params:", error);
+      }
+    }
+  }, [params]);
+
+  const handleUpdatePassword = async () => {
+    if (!password || !confirmPassword) {
+      showCustomAlert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      showCustomAlert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showCustomAlert('Error', 'Passwords do not match');
       return;
     }
 
     try {
       setLoading(true);
       
-      // First, check if the email exists in the correct role table
-      let { data: roleData, error: roleError } = await supabase
-        .from(selectedRole === 'student' ? 'student' : 
-              selectedRole === 'teacher' ? 'teacher' : 'office_staff')
-        .select('email')
-        .eq('email', email)
-        .single();
-      
-      if (roleError || !roleData) {
-        showCustomAlert(
-          'Account Not Found', 
-          `No ${selectedRole} account was found with this email address. Please check the email or select a different role.`
-        );
-        setLoading(false);
-        return;
-      }
-      
-      // If email exists in the correct role table, proceed with password reset
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'http://localhost:8081/password-confirm',
+      // If we have a token, we should use updateUser
+      const { error } = await supabase.auth.updateUser({
+        password: password
       });
       
       if (error) throw error;
       
-      setResetSent(true);
+      // Clear any stored tokens
+      await AsyncStorage.removeItem('@supabase.auth.token');
+      
       showCustomAlert(
-        'Password Reset Email Sent',
-        'Check your email for a link to reset your password. If it doesn\'t appear within a few minutes, check your spam folder.',
-        [{ text: 'Return to Login', onPress: () => router.push('/login') }]
+        'Password Updated',
+        'Your password has been successfully updated. You can now log in with your new password.',
+        [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
       );
       
     } catch (error: any) {
-      console.error('Reset password error:', error.message);
-      showCustomAlert('Failed', error.message);
+      console.error('Update password error:', error.message);
+      
+      // If token is invalid or expired
+      if (error.message.includes('token') || error.message.includes('expired') || error.message.includes('JWT')) {
+        showCustomAlert(
+          'Error',
+          'There was a problem updating your password. Please try again.',
+          [{ text: 'Try Again' }]
+        );
+      } else {
+        showCustomAlert('Failed', error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,7 +255,7 @@ export default function ResetPasswordScreen() {
             >
               <Ionicons name="arrow-back" size={24} color="rgb(255, 255, 255)" />
             </TouchableOpacity>
-            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.title}>Set New Password</Text>
           </SafeAreaView>
         </LinearGradient>
         
@@ -213,65 +263,64 @@ export default function ResetPasswordScreen() {
           <View style={styles.blackContainer}>
             <View style={styles.formContainer}>
               <Text style={styles.instructions}>
-                Enter your email address and we'll send you a link to reset your password.
+                Enter your new password below. Choose a strong password that is at least 6 characters long.
               </Text>
               
-              {/* Role selection */}
-              <View style={styles.roleContainer}>
-                <Text style={styles.roleLabel}>Select your role:</Text>
-                <View style={styles.roleOptions}>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'student' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('student')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'student' && styles.selectedRoleText]}>Student</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'teacher' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('teacher')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'teacher' && styles.selectedRoleText]}>Teacher</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'office_staff' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('office_staff')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'office_staff' && styles.selectedRoleText]}>Office</Text>
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed" size={20} color="rgb(0, 0, 0)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="New Password"
+                  placeholderTextColor="rgba(0, 0, 0, 0.6)"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="rgb(0, 0, 0)" />
+                </TouchableOpacity>
               </View>
               
               <View style={styles.inputContainer}>
-                <Ionicons name="mail" size={20} color="rgb(0, 0, 0)" style={styles.inputIcon} />
+                <Ionicons name="lock-closed" size={20} color="rgb(0, 0, 0)" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email"
+                  placeholder="Confirm Password"
                   placeholderTextColor="rgba(0, 0, 0, 0.6)"
-                  value={email}
-                  onChangeText={setEmail}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
-                  keyboardType="email-address"
-                  editable={!resetSent}
                 />
+                <TouchableOpacity 
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={20} color="rgb(0, 0, 0)" />
+                </TouchableOpacity>
               </View>
               
               <TouchableOpacity 
                 style={styles.buttonWrapper} 
-                onPress={handleResetPassword}
-                disabled={loading || resetSent}
+                onPress={handleUpdatePassword}
+                disabled={loading}
               >
                 <LinearGradient
                   colors={['rgb(255, 255, 255)', 'rgb(255, 255, 255)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
-                  style={styles.resetButton}
+                  style={styles.updateButton}
                 >
                   {loading ? (
                     <ActivityIndicator color="rgb(0, 0, 0)" />
                   ) : (
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="key" size={24} color="rgb(0, 0, 0)" style={styles.buttonIcon} />
-                      <Text style={styles.resetButtonText}>Reset Password</Text>
+                      <Ionicons name="save" size={24} color="rgb(0, 0, 0)" style={styles.buttonIcon} />
+                      <Text style={styles.updateButtonText}>Update Password</Text>
                     </View>
                   )}
                 </LinearGradient>
@@ -439,7 +488,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgb(255, 255, 255)',
     borderRadius: 30,
-    marginBottom: 25,
+    marginBottom: 15,
     borderWidth: 5,
     borderColor: 'rgb(0, 0, 0)',
     overflow: 'hidden',
@@ -455,11 +504,16 @@ const styles = StyleSheet.create({
     color: 'rgb(0, 0, 0)',
     fontFamily: 'Roboto-Medium',
   },
+  eyeIcon: {
+    padding: 10,
+    paddingRight: 15,
+  },
   buttonWrapper: {
     width: '100%',
     marginBottom: 20,
+    marginTop: 10,
   },
-  resetButton: {
+  updateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -471,7 +525,7 @@ const styles = StyleSheet.create({
   buttonIcon: {
     marginRight: 10,
   },
-  resetButtonText: {
+  updateButtonText: {
     color: "rgb(0, 0, 0)",
     fontSize: 16,
     fontWeight: "normal",
@@ -503,38 +557,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Oswald-SemiBold',
     fontSize: 14,
   },
-  roleContainer: {
-    marginBottom: 20,
-  },
-  roleLabel: {
-    color: 'rgb(255, 255, 255)',
-    fontSize: 14,
-    marginBottom: 10,
-    fontFamily: 'Roboto-Medium',
-  },
-  roleOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  roleOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgb(255, 255, 255)',
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  selectedRole: {
-    backgroundColor: 'rgb(255, 255, 255)',
-    borderColor: 'rgb(0, 0, 0)',
-  },
-  roleText: {
-    color: 'rgb(255, 255, 255)',
-    fontSize: 14,
-    fontFamily: 'Roboto-Medium',
-  },
-  selectedRoleText: {
-    color: 'rgb(0, 0, 0)',
-  },
-}); 
+});
