@@ -147,15 +147,61 @@ export default function SignupScreen() {
 
       setLoading(true);
 
-      // Sign up with Supabase
+      // First, check if the email exists in the correct role table
+      let tableName = userType === 'Student' ? 'student' : 
+                      userType === 'Teacher' ? 'teacher' : 'office_staff';
+      
+      console.log(`Checking ${tableName} table for email: ${email}`);
+      
+      // Get the correct column name based on the table
+      let emailColumn;
+      if (tableName === 'student') {
+        emailColumn = 's_email';
+      } else if (tableName === 'teacher') {
+        emailColumn = 't_email';  // Assuming teacher table uses t_email
+      } else {
+        emailColumn = 'os_email';  // Assuming office_staff table uses os_email
+      }
+      
+      console.log(`Using column name: ${emailColumn}`);
+      
+      // Use ilike for case insensitive matching with the correct column name
+      let { data: roleData, error: roleError } = await supabase
+        .from(tableName)
+        .select('*')
+        .ilike(emailColumn, email.trim())
+        
+      console.log('Query result:', roleData, roleError);
+        
+      if (roleError) {
+        console.error('Database error:', roleError);
+        showCustomAlert(
+          'Database Error', 
+          'An error occurred while checking your registration. Please try again later.'
+        );
+        setLoading(false);
+        return;
+      }
+      
+      if (!roleData || roleData.length === 0) {
+        console.log(`No ${userType} account found with email: ${email}`);
+        showCustomAlert(
+          'Registration Failed', 
+          `No ${userType} account was found with this email address. Please check the email or contact your administrator.`
+        );
+        setLoading(false);
+        return;
+      }
+      
+      console.log(`${userType} account found:`, roleData[0]);
+
+      // If email exists in the correct role table, proceed with signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // For development, you can skip email verification
           emailRedirectTo: 'cusatconnect://login',
           data: {
-            // Store user type and other metadata
             userType: userType,
             name: email.split('@')[0],
           }
