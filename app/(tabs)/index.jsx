@@ -75,7 +75,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" backgroundColor="rgb(0, 0, 0)" />
       <View style={styles.mainContent}>
         <View style={styles.navbar}>
           <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
@@ -156,7 +156,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'rgb(0, 0, 0)',
   },
   mainContent: {
     flex: 1,
@@ -182,9 +182,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   header: {
+    backgroundColor: 'rgb(45, 30, 20)',
+    paddingVertical: 15,
     paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 30,
   },
   headerText: {
     fontSize: 45,
