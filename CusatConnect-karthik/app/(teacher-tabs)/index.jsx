@@ -1,88 +1,110 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
 
-export default function TeacherHomeScreen() {
-  const router = useRouter();
+export default function HomeScreen() {
+  const [circulars, setCirculars] = useState([]);
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    fetchCirculars();
+  }, []);
+
+  const fetchCirculars = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { data, error } = await supabase
+        .from('circulars')
+        .select('*')
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
-      router.replace('/');
+      setCirculars(data || []);
     } catch (error) {
-      console.error('Error logging out:', error.message);
+      console.error('Error fetching circulars:', error.message);
     }
   };
 
-  const stats = [
-    {
-      title: 'Pending Queries',
-      value: '5',
-      icon: 'help-circle',
-      color: '#9A8174'
-    },
-    {
-      title: 'Today\'s Classes',
-      value: '3',
-      icon: 'calendar',
-      color: '#9A8174'
-    },
-    {
-      title: 'Assignments Due',
-      value: '2',
-      icon: 'time',
-      color: '#9A8174'
+  const handleViewPDF = async (filePath) => {
+    try {
+      console.log('Opening file:', filePath);
+      
+      const { data, error } = supabase.storage
+        .from('circulars')
+        .getPublicUrl(filePath);
+
+      if (error) {
+        console.error('Error getting public URL:', error.message);
+        throw error;
+      }
+
+      if (!data?.publicUrl) {
+        console.error('No public URL returned');
+        throw new Error('Could not get file URL');
+      }
+
+      console.log('Opening URL:', data.publicUrl);
+      await WebBrowser.openBrowserAsync(data.publicUrl);
+    } catch (error) {
+      console.error('Error in handleViewPDF:', error);
+      alert('Failed to open PDF: ' + error.message);
     }
-  ];
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" backgroundColor="rgb(0, 0, 0)" />
       <View style={styles.mainContent}>
         <View style={styles.navbar}>
           <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
-          <Pressable style={styles.menuButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
+          <Pressable style={styles.menuButton}>
+            <Ionicons name="menu" size={24} color="white" />
           </Pressable>
         </View>
         
         <View style={styles.header}>
-          <Text style={styles.headerText}>Hi Teacher.</Text>
+          <Text style={styles.headerText}>Explore recent circulars.</Text>
         </View>
         
-        <View style={styles.statsContainer}>
-          {stats.map((stat, index) => (
-            <View key={index} style={styles.statCard}>
-              <View style={[styles.iconContainer, { backgroundColor: stat.color }]}>
-                <Ionicons name={stat.icon} size={24} color="white" />
+        <View style={styles.notificationsContainer}>
+          <ScrollView 
+            style={styles.notificationBox}
+            showsVerticalScrollIndicator={false}
+          >
+            {circulars.map((circular, index) => (
+              <View key={circular.id} style={styles.notificationItem}>
+                <ThemedText style={styles.notificationTitle}>{circular.title}</ThemedText>
+                <ThemedText style={styles.notificationDescription}>{circular.description || 'No description provided.'}</ThemedText>
+                <View style={styles.notificationFooter}>
+                  <ThemedText style={styles.notificationDate}>
+                    Published on: {formatDate(circular.created_at)}
+                  </ThemedText>
+                  <TouchableOpacity 
+                    style={styles.viewButton}
+                    onPress={() => handleViewPDF(circular.file_path)}
+                  >
+                    <Text style={styles.viewButtonText}>View</Text>
+                  </TouchableOpacity>
+                </View>
+                {index < circulars.length - 1 && <View style={styles.divider} />}
               </View>
-              <View style={styles.statInfo}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statTitle}>{stat.title}</Text>
+            ))}
+            {circulars.length === 0 && (
+              <View style={styles.emptyState}>
+                <ThemedText style={styles.emptyStateText}>No circulars available.</ThemedText>
               </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="add-circle" size={24} color="#9A8174" />
-              <Text style={styles.actionText}>New Assignment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="help-circle" size={24} color="#9A8174" />
-              <Text style={styles.actionText}>Answer Queries</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="notifications" size={24} color="#9A8174" />
-              <Text style={styles.actionText}>Announcements</Text>
-            </TouchableOpacity>
-          </View>
+            )}
+          </ScrollView>
         </View>
       </View>
     </View>
@@ -92,7 +114,7 @@ export default function TeacherHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'rgb(0, 0, 0)',
   },
   mainContent: {
     flex: 1,
@@ -118,9 +140,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   header: {
+    backgroundColor: 'rgb(45, 30, 20)',
+    paddingVertical: 15,
     paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 30,
   },
   headerText: {
     fontSize: 45,
@@ -131,17 +153,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textAlign: 'left',
   },
-  statsContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 30,
+  notificationsContainer: {
+    flex: 1,
+    marginTop: 10,
   },
-  statCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  notificationBox: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+    maxHeight: '100%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -151,63 +170,68 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  notificationItem: {
+    padding: 20,
   },
-  statInfo: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
+  notificationTitle: {
+    fontSize: 22,
+    fontWeight: '500',
     color: '#000',
+    marginBottom: 10,
     fontFamily: 'TTRamillas',
-    marginBottom: 4,
+    letterSpacing: 0.3,
   },
-  statTitle: {
+  notificationDescription: {
+    fontSize: 16,
+    color: '#3B3B3B',
+    marginBottom: 12,
+    fontFamily: 'TTRamillas',
+    lineHeight: 22,
+  },
+  notificationFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  notificationDate: {
+    fontSize: 13,
+    color: '#666',
+    fontFamily: 'LexendDeca',
+    letterSpacing: 0.2,
+  },
+  viewButton: {
+    backgroundColor: '#9A8174',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  viewButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: 'LexendDeca',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginTop: 16,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
     fontSize: 16,
     color: '#666',
     fontFamily: 'TTRamillas',
   },
-  quickActions: {
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '500',
-    color: '#fff',
-    fontFamily: 'TTRamillas',
-    marginBottom: 16,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    width: '30%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  actionText: {
-    fontSize: 14,
-    color: '#000',
-    fontFamily: 'TTRamillas',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-}); 
+});
