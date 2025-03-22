@@ -156,11 +156,11 @@ export default function SignupScreen() {
       // Get the correct column name based on the table
       let emailColumn;
       if (tableName === 'student') {
-        emailColumn = 's_email';
+        emailColumn = 'email';
       } else if (tableName === 'teacher') {
-        emailColumn = 't_email';  // Assuming teacher table uses t_email
+        emailColumn = 'email';  // Assuming teacher table uses t_email
       } else {
-        emailColumn = 'os_email';  // Assuming office_staff table uses os_email
+        emailColumn = 'email';  // Assuming office_staff table uses o_email
       }
       
       console.log(`Using column name: ${emailColumn}`);
@@ -199,13 +199,6 @@ export default function SignupScreen() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: 'cusatconnect://login',
-          data: {
-            userType: userType,
-            name: email.split('@')[0],
-          }
-        }
       });
 
       if (error) throw error;
@@ -219,45 +212,14 @@ export default function SignupScreen() {
         await AsyncStorage.setItem('userType', userType as string);
         
         // Navigate to the main app
+      if (userType === 'Student') {
         router.replace('/(tabs)');
-        
-        showCustomAlert(
-          'Account Created',
-          'Your account has been created successfully. Please verify your email when you receive the verification link.'
-        );
-      } else {
-        // Email confirmation required but we'll let user proceed anyway for testing
-        showCustomAlert(
-          'Account Created',
-          'Your account has been created. For development purposes, you can proceed to login now.',
-          [
-            { 
-              text: 'Login Now', 
-              onPress: async () => {
-                // For development, try to sign in immediately
-                try {
-                  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                  });
-                  
-                  if (signInError) throw signInError;
-                  
-                  if (signInData.session) {
-                    await AsyncStorage.setItem('user-session', JSON.stringify(signInData.session));
-                    await AsyncStorage.setItem('isAuthenticated', 'true');
-                    await AsyncStorage.setItem('userType', userType as string);
-                    router.replace('/(tabs)');
-                  }
-                } catch (signInErr: any) {
-                  console.error('Auto-login error:', signInErr.message);
-                  router.replace('/login');
-                }
-              } 
-            },
-            { text: 'Go to Login', onPress: () => router.replace('/login') }
-          ]
-        );
+      } else if (userType === 'Teacher') {
+        router.replace('/(teacher-tabs)');
+      } else if (userType === 'Office') {
+        router.replace('/(staff-tabs)');
+      }
+
       }
     } catch (error: any) {
       console.error('Signup error:', error.message);

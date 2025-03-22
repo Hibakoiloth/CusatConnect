@@ -203,7 +203,6 @@ export default function PasswordConfirmScreen() {
       showCustomAlert(
         'Password Updated',
         'Your password has been successfully updated. You can now log in with your new password.',
-        [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
       );
       
     } catch (error: any) {

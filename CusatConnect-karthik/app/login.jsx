@@ -155,7 +155,7 @@ export default function LoginScreen() {
   const handlePasswordReset = () => {
     router.push({
       pathname: '/reset-password',
-      params: { email }
+      params: { email, role: userType.toLowerCase() }
     });
   };
 

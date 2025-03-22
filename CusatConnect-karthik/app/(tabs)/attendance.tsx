@@ -6,7 +6,7 @@ import React from 'react';
 export default function HelpScreen() {
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">Help</ThemedText>
+      <ThemedText type="title">Attendance</ThemedText>
       <ThemedText>Need assistance? We're here to help!</ThemedText>
     </ThemedView>
   );

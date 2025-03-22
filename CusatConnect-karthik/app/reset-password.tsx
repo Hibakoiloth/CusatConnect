@@ -59,7 +59,7 @@ const CustomAlert = ({ visible, title, message, buttons, onClose }: CustomAlertP
 };
 
 export default function ResetPasswordScreen() {
-  const { email: initialEmail = '' } = useLocalSearchParams();
+  const { email: initialEmail = '', role = 'student' } = useLocalSearchParams();
   const [email, setEmail] = useState(initialEmail as string);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -123,9 +123,6 @@ export default function ResetPasswordScreen() {
     outputRange: [0, -45] // Increase vertical movement
   });
 
-  // Add state for role selection
-  const [selectedRole, setSelectedRole] = useState<string>('student');
-
   const handleResetPassword = async () => {
     if (!email) {
       showCustomAlert('Error', 'Please enter your email address');
@@ -135,10 +132,10 @@ export default function ResetPasswordScreen() {
     try {
       setLoading(true);
       
-      // First, check if the email exists in the correct role table
+      // Use the role from params directly
       let { data: roleData, error: roleError } = await supabase
-        .from(selectedRole === 'student' ? 'student' : 
-              selectedRole === 'teacher' ? 'teacher' : 'office_staff')
+        .from(role === 'student' ? 'student' : 
+              role === 'teacher' ? 'teacher' : 'office_staff')
         .select('email')
         .eq('email', email)
         .single();
@@ -146,7 +143,7 @@ export default function ResetPasswordScreen() {
       if (roleError || !roleData) {
         showCustomAlert(
           'Account Not Found', 
-          `No ${selectedRole} account was found with this email address. Please check the email or select a different role.`
+          `No ${role} account was found with this email address. Please check your email.`
         );
         setLoading(false);
         return;
@@ -215,31 +212,6 @@ export default function ResetPasswordScreen() {
               <Text style={styles.instructions}>
                 Enter your email address and we'll send you a link to reset your password.
               </Text>
-              
-              {/* Role selection */}
-              <View style={styles.roleContainer}>
-                <Text style={styles.roleLabel}>Select your role:</Text>
-                <View style={styles.roleOptions}>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'student' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('student')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'student' && styles.selectedRoleText]}>Student</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'teacher' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('teacher')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'teacher' && styles.selectedRoleText]}>Teacher</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.roleOption, selectedRole === 'office_staff' && styles.selectedRole]}
-                    onPress={() => setSelectedRole('office_staff')}
-                  >
-                    <Text style={[styles.roleText, selectedRole === 'office_staff' && styles.selectedRoleText]}>Office</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
               
               <View style={styles.inputContainer}>
                 <Ionicons name="mail" size={20} color="rgb(0, 0, 0)" style={styles.inputIcon} />
@@ -503,38 +475,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Oswald-SemiBold',
     fontSize: 14,
   },
-  roleContainer: {
-    marginBottom: 20,
-  },
-  roleLabel: {
-    color: 'rgb(255, 255, 255)',
-    fontSize: 14,
-    marginBottom: 10,
-    fontFamily: 'Roboto-Medium',
-  },
-  roleOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  roleOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgb(255, 255, 255)',
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  selectedRole: {
-    backgroundColor: 'rgb(255, 255, 255)',
-    borderColor: 'rgb(0, 0, 0)',
-  },
-  roleText: {
-    color: 'rgb(255, 255, 255)',
-    fontSize: 14,
-    fontFamily: 'Roboto-Medium',
-  },
-  selectedRoleText: {
-    color: 'rgb(0, 0, 0)',
-  },
-}); 
+});

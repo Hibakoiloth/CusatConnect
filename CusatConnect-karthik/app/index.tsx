@@ -13,9 +13,7 @@ SplashScreen.preventAutoHideAsync();
 export default function IndexScreen() {
   const [fontsLoaded] = useFonts({
     'Roboto-Medium': require('../assets/fonts/Roboto/static/Roboto-Medium.ttf'),
-    'Roboto-Regular': require('../assets/fonts/Roboto/static/Roboto-Regular.ttf'),
     'Oswald-Bold': require('../assets/fonts/Oswald/static/Oswald-Bold.ttf'),
-    'Oswald-SemiBold': require('../assets/fonts/Oswald/static/Oswald-SemiBold.ttf'),
   });
   
   // Animation for pulsing glow

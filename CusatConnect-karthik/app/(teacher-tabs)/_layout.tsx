@@ -1,7 +1,7 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
 
 export default function TeacherTabLayout() {
   return (
