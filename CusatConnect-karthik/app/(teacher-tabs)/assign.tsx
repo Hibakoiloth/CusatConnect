@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, TextInput, Pressable, ScrollView, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import * as DocumentPicker from 'expo-document-picker';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,31 @@ export default function UploadScreen() {
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [showDepartmentPicker, setShowDepartmentPicker] = useState(false);
+  const [semesters] = useState(['1', '2', '3', '4', '5', '6', '7', '8']);
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [showSemesterPicker, setShowSemesterPicker] = useState(false);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('student')
+        .select('dept')
+        .not('dept', 'is', null);
+      
+      if (error) throw error;
+      const uniqueDepartments = [...new Set(data.map(item => item.dept))];
+      setDepartments(uniqueDepartments);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -40,6 +65,11 @@ export default function UploadScreen() {
   };
 
   const uploadFile = async (fileUri: string) => {
+    if (!selectedDepartment || !selectedSemester) {
+      alert('Please select department and semester');
+      return;
+    }
+
     try {
       console.log("\n=== CIRCULAR UPLOAD PROCESS START ===");
       console.log("1. Original file details:");
@@ -76,12 +106,15 @@ export default function UploadScreen() {
       // Create database record
       console.log("6. Creating database record...");
       const { data: dbData, error: dbError } = await supabase
-        .from('circulars') 
+        .from('assignments') 
         .insert([
           {
             title: title,
             description: description,
             file_path: fileName,
+            department: selectedDepartment,
+            semester: selectedSemester,
+            created_at: new Date().toISOString(),
             status: 'active'
           }
         ])
@@ -126,7 +159,7 @@ export default function UploadScreen() {
           <View style={styles.uploadContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Assignment Title"
+              placeholder="Assign Title"
               placeholderTextColor="#666"
               value={title}
               onChangeText={setTitle}
@@ -141,6 +174,22 @@ export default function UploadScreen() {
               multiline
               numberOfLines={4}
             />
+
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowDepartmentPicker(true)}>
+              <Text style={styles.pickerButtonText}>
+                {selectedDepartment || 'Select Department'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowSemesterPicker(true)}>
+              <Text style={styles.pickerButtonText}>
+                {selectedSemester ? `Semester ${selectedSemester}` : 'Select Semester'}
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.uploadBox} 
@@ -171,10 +220,66 @@ export default function UploadScreen() {
             }}
             disabled={!selectedFile || selectedFile.canceled || !title.trim()}
           >
-            <Text style={styles.submitButtonText}>Submit Assignment</Text>
+            <Text style={styles.submitButtonText}>Upload Assignment</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        visible={showDepartmentPicker}
+        transparent={true}
+        animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <ScrollView>
+              {departments.map((dept, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setSelectedDepartment(dept);
+                    setShowDepartmentPicker(false);
+                  }}>
+                  <Text style={styles.optionText}>{dept}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowDepartmentPicker(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showSemesterPicker}
+        transparent={true}
+        animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <ScrollView>
+              {semesters.map((sem) => (
+                <TouchableOpacity
+                  key={sem}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setSelectedSemester(sem);
+                    setShowSemesterPicker(false);
+                  }}>
+                  <Text style={styles.optionText}>Semester {sem}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowSemesterPicker(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -283,4 +388,53 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 20,
   },
-}); 
+  pickerButton: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 30,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 5,
+    borderColor: '#000',
+  },
+  pickerButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontFamily: 'Roboto-Medium',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+  },
+  modalContent: {
+    backgroundColor: '#000',
+    borderRadius: 30,
+    padding: 20,
+    width: '80%',
+    maxHeight: '80%',
+    borderWidth: 2,
+    borderColor: '#333',
+  },
+  optionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+  },
+  optionText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#007AFF',
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+});

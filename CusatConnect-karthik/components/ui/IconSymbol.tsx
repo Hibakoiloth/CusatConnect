@@ -15,6 +15,7 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'person.fill': 'person',
+  'folder.fill.badge.plus': 'drive-folder-upload',
 } as Partial<
   Record<
     import('expo-symbols').SymbolViewProps['name'],

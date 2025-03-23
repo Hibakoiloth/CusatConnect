@@ -46,7 +46,7 @@ export default function TabLayout() {
         name="assign"
         options={{
           title: 'Assignment',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill.badge.plus" color={color} />,
         }}
       />
       <Tabs.Screen
