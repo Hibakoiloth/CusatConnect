@@ -1,15 +1,18 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Animated, Easing } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function HomeScreen() {
   const [circulars, setCirculars] = useState([]);
+  const backgroundAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchCirculars();
+    setupBackgroundAnimation();
   }, []);
 
   const fetchCirculars = async () => {
@@ -25,6 +28,35 @@ export default function HomeScreen() {
       console.error('Error fetching circulars:', error.message);
     }
   };
+
+  const setupBackgroundAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(backgroundAnim, {
+          toValue: 1,
+          duration: 6000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        Animated.timing(backgroundAnim, {
+          toValue: 0,
+          duration: 6000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.quad),
+        }),
+      ])
+    ).start();
+  };
+
+  const backgroundTranslateX = backgroundAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -70]
+  });
+  
+  const backgroundTranslateY = backgroundAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -45]
+  });
 
   const handleViewPDF = async (filePath) => {
     try {
@@ -62,176 +94,175 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="rgb(0, 0, 0)" />
-      <View style={styles.mainContent}>
-        <View style={styles.navbar}>
-          <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
-          <Pressable style={styles.menuButton}>
-            <Ionicons name="menu" size={24} color="white" />
-          </Pressable>
-        </View>
+    <Animated.View style={styles.backgroundContainer}>
+      <Animated.Image 
+        source={require('../../assets/images/connection.jpeg')} 
+        style={[
+          styles.backgroundImage,
+          {
+            transform: [
+              { translateX: backgroundTranslateX },
+              { translateY: backgroundTranslateY }
+            ]
+          }
+        ]}
+      />
+      
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
         
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Explore recent circulars.</Text>
-        </View>
-        
-        <View style={styles.notificationsContainer}>
-          <ScrollView 
-            style={styles.notificationBox}
-            showsVerticalScrollIndicator={false}
-          >
-            {circulars.map((circular, index) => (
-              <View key={circular.id} style={styles.notificationItem}>
-                <ThemedText style={styles.notificationTitle}>{circular.title}</ThemedText>
-                <ThemedText style={styles.notificationDescription}>{circular.description || 'No description provided.'}</ThemedText>
-                <View style={styles.notificationFooter}>
-                  <ThemedText style={styles.notificationDate}>
-                    Published on: {formatDate(circular.created_at)}
-                  </ThemedText>
-                  <TouchableOpacity 
-                    style={styles.viewButton}
-                    onPress={() => handleViewPDF(circular.file_path)}
-                  >
-                    <Text style={styles.viewButtonText}>View</Text>
-                  </TouchableOpacity>
+        <LinearGradient
+          colors={['rgba(0, 0, 0, 0.7)','rgba(0, 0, 0, 0.5)','rgba(255, 255, 255, 0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.headerWithStatusBar}
+        >
+          <View style={styles.safeAreaContent}>
+            <Text style={styles.title}>CUSATCONNECT</Text>
+            <Text style={styles.subtitle}>Explore recent circulars.</Text>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.content}>
+          <View style={styles.blackContainer}>
+            <ScrollView 
+              style={styles.notificationList}
+              showsVerticalScrollIndicator={false}
+            >
+              {circulars.map((circular, index) => (
+                <View key={circular.id} style={styles.notificationItem}>
+                  <Text style={styles.notificationTitle}>{circular.title}</Text>
+                  <Text style={styles.notificationDescription}>
+                    {circular.description || 'No description provided.'}
+                  </Text>
+                  <View style={styles.notificationFooter}>
+                    <Text style={styles.dateText}>
+                      Published on: {formatDate(circular.created_at)}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.viewButton}
+                      onPress={() => handleViewPDF(circular.file_path)}
+                    >
+                      <Text style={styles.viewButtonText}>View</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {index < circulars.length - 1 && <View style={styles.divider} />}
                 </View>
-                {index < circulars.length - 1 && <View style={styles.divider} />}
-              </View>
-            ))}
-            {circulars.length === 0 && (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyStateText}>No circulars available.</ThemedText>
-              </View>
-            )}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            © Cochin University of Science and Technology
+          </Text>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  backgroundImage: {
+    position: 'absolute',
+    width: '150%',
+    height: '150%',
+    top: -80,
+    left: -80,
+  },
   container: {
     flex: 1,
-    backgroundColor: 'rgb(0, 0, 0)',
   },
-  mainContent: {
-    flex: 1,
-    marginTop: StatusBar.currentHeight,
+  headerWithStatusBar: {
+    paddingTop: StatusBar.currentHeight || 0,
+    paddingBottom: 20,
   },
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 15,
-    paddingBottom: 10,
-    backgroundColor: '#000',
-  },
-  navTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    fontFamily: 'TTRamillas',
-    letterSpacing: 1,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  header: {
-    backgroundColor: 'rgb(45, 30, 20)',
-    paddingVertical: 15,
+  safeAreaContent: {
+    paddingTop: 40,
     paddingHorizontal: 20,
   },
-  headerText: {
-    fontSize: 45,
-    fontWeight: '400',
+  title: {
+    fontSize: 28,
     color: '#fff',
-    lineHeight: 48,
-    fontFamily: 'TTRamillas',
-    letterSpacing: 1,
-    textAlign: 'left',
+    fontFamily: 'Oswald-Bold',
+    marginBottom: 10,
   },
-  notificationsContainer: {
+  subtitle: {
+    fontSize: 18,
+    color: '#fff',
+    fontFamily: 'Roboto-Medium',
+    opacity: 0.9,
+  },
+  content: {
     flex: 1,
-    marginTop: 10,
-  },
-  notificationBox: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    maxHeight: '100%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  notificationItem: {
     padding: 20,
   },
+  blackContainer: {
+    backgroundColor: '#000',
+    borderRadius: 30,
+    padding: 20,
+    flex: 1,
+  },
+  notificationList: {
+    flex: 1,
+  },
+  notificationItem: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+  },
   notificationTitle: {
-    fontSize: 22,
-    fontWeight: '500',
+    fontSize: 18,
     color: '#000',
-    marginBottom: 10,
-    fontFamily: 'TTRamillas',
-    letterSpacing: 0.3,
+    fontFamily: 'Oswald-Bold',
+    marginBottom: 8,
   },
   notificationDescription: {
-    fontSize: 16,
-    color: '#3B3B3B',
+    fontSize: 14,
+    color: '#333',
+    fontFamily: 'Roboto-Medium',
     marginBottom: 12,
-    fontFamily: 'TTRamillas',
-    lineHeight: 22,
   },
   notificationFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  notificationDate: {
-    fontSize: 13,
+  dateText: {
+    fontSize: 12,
     color: '#666',
-    fontFamily: 'LexendDeca',
-    letterSpacing: 0.2,
+    fontFamily: 'Roboto-Medium',
   },
   viewButton: {
-    backgroundColor: '#9A8174',
-    paddingHorizontal: 20,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 15,
     paddingVertical: 8,
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    borderRadius: 20,
   },
   viewButtonText: {
     color: '#fff',
-    fontSize: 13,
-    fontFamily: 'LexendDeca',
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontFamily: 'Roboto-Medium',
   },
   divider: {
     height: 1,
     backgroundColor: '#eee',
-    marginTop: 16,
+    marginVertical: 10,
   },
-  emptyState: {
-    padding: 20,
+  footer: {
+    padding: 15,
+    backgroundColor: '#000',
     alignItems: 'center',
   },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#666',
-    fontFamily: 'TTRamillas',
+  footerText: {
+    color: '#fff',
+    fontFamily: 'Oswald-SemiBold',
+    fontSize: 14,
   },
 });

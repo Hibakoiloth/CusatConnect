@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
+import React from 'react';
 
 export default function UploadScreen() {
   const router = useRouter();
