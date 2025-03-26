@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal, TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -9,9 +9,16 @@ import { router } from 'expo-router';
 export default function HomeScreen() {
   const [circulars, setCirculars] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState(null);
+  const [activeCirculars, setActiveCirculars] = useState([]);
+  const [showCirculars, setShowCirculars] = useState(false);
 
   useEffect(() => {
     fetchCirculars();
+    fetchStudentProfile();
   }, []);
 
   const fetchCirculars = async () => {
@@ -25,6 +32,25 @@ export default function HomeScreen() {
       setCirculars(data || []);
     } catch (error) {
       console.error('Error fetching circulars:', error.message);
+    }
+  };
+
+  const fetchStudentProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('No user found');
+
+      const { data, error } = await supabase
+        .from('student')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+
+      if (error) throw error;
+      setStudentProfile(data);
+    } catch (error) {
+      console.error('Error fetching student profile:', error.message);
     }
   };
 
@@ -67,10 +93,52 @@ export default function HomeScreen() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      router.replace('/');
+      
+      // Clear any local state or data if needed
+      setCirculars([]);
+      setStudentProfile(null);
+      
+      // Navigate to the index page
+      router.replace('/app/index');
     } catch (error) {
-      console.error('Error logging out:', error.message);
+      console.error('Error signing out:', error.message);
+      alert('Failed to sign out');
     }
+  };
+
+  const handleEdit = () => {
+    setEditedProfile(studentProfile);
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (!editedProfile) return;
+
+      const { error } = await supabase
+        .from('student')
+        .update({
+          name: editedProfile.name,
+          rollno: editedProfile.rollno,
+          department: editedProfile.department,
+          semester: editedProfile.semester,
+        })
+        .eq('email', editedProfile.email);
+
+      if (error) throw error;
+
+      setStudentProfile(editedProfile);
+      setIsEditing(false);
+      alert('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error.message);
+      alert('Failed to update profile');
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedProfile(studentProfile);
+    setIsEditing(false);
   };
 
   return (
@@ -94,7 +162,7 @@ export default function HomeScreen() {
               style={styles.menuItem}
               onPress={() => {
                 setShowMenu(false);
-                // Navigate to profile or show profile modal
+                setShowProfile(true);
               }}
             >
               <Ionicons name="person" size={20} color="#000" />
@@ -148,6 +216,117 @@ export default function HomeScreen() {
             )}
           </ScrollView>
         </View>
+
+        {/* Profile Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showProfile}
+          onRequestClose={() => setShowProfile(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity 
+                  onPress={() => setShowProfile(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Student Profile</Text>
+              </View>
+              
+              {studentProfile ? (
+                <ScrollView style={styles.profileContent}>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Name</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.name}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, name: text} : null)}
+                        placeholder="Enter your name"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{studentProfile.name}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Roll Number</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.rollno}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, rollno: text} : null)}
+                        placeholder="Enter your roll number"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{studentProfile.rollno}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Department</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.department}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, department: text} : null)}
+                        placeholder="Enter your department"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{studentProfile.department}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Semester</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.semester}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, semester: text} : null)}
+                        placeholder="Enter your semester"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{studentProfile.semester}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Email</Text>
+                    <Text style={styles.profileValue}>{studentProfile.email}</Text>
+                  </View>
+                  
+                  {!isEditing ? (
+                    <TouchableOpacity 
+                      onPress={handleEdit}
+                      style={styles.editButtonContainer}
+                    >
+                      <Text style={styles.editButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.editActionsContainer}>
+                      <TouchableOpacity 
+                        onPress={handleCancel}
+                        style={styles.cancelButtonContainer}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        onPress={handleSave}
+                        style={styles.saveButtonContainer}
+                      >
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </ScrollView>
+              ) : (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Failed to load profile information</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );
@@ -182,7 +361,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   header: {
-    backgroundColor: 'rgb(45, 30, 20)',
+    
     paddingVertical: 15,
     paddingHorizontal: 20,
   },
@@ -309,5 +488,113 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#eee',
     marginVertical: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 20,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginLeft: 10,
+    fontFamily: 'TTRamillas',
+  },
+  profileContent: {
+    padding: 20,
+  },
+  profileSection: {
+    marginBottom: 15,
+  },
+  profileLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    fontFamily: 'TTRamillas',
+  },
+  profileValue: {
+    fontSize: 14,
+    color: '#000',
+    fontFamily: 'TTRamillas',
+  },
+  profileInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    fontFamily: 'TTRamillas',
+  },
+  editButtonContainer: {
+    padding: 10,
+    backgroundColor: '#9A8174',
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'TTRamillas',
+  },
+  editActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cancelButtonContainer: {
+    padding: 10,
+    backgroundColor: '#ccc',
+    borderRadius: 5,
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'TTRamillas',
+  },
+  saveButtonContainer: {
+    padding: 10,
+    backgroundColor: '#9A8174',
+    borderRadius: 5,
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 10,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'TTRamillas',
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#000',
+    fontSize: 14,
+    fontFamily: 'TTRamillas',
   },
 });

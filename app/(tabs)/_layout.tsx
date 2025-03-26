@@ -15,41 +15,47 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: 'rgb(255, 255, 255)',
-        tabBarInactiveTintColor: 'rgb(102, 102, 102)',
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: () => <View style={{ backgroundColor: 'rgb(0, 0, 0)', height: '100%' }} />,
         tabBarStyle: {
-          backgroundColor: 'rgb(0, 0, 0)',
+          backgroundColor: '#000',
           borderTopWidth: 0,
+          elevation: 0,
           height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
         },
+        tabBarActiveTintColor: '#9A8174',
+        tabBarInactiveTintColor: '#666',
         tabBarLabelStyle: {
-          display: 'none',
+          fontFamily: 'TTRamillas',
+          fontSize: 12,
+          marginBottom: 5,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="records"
         options={{
           title: 'Records',
-          tabBarIcon: ({ color }) => <Ionicons name="document-text" size={28} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="document-text" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'Notifications',
-          tabBarIcon: ({ color }) => <Ionicons name="notifications" size={28} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen

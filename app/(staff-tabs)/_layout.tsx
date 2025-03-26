@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function StaffTabLayout() {
+export default function StaffTabsLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -19,7 +19,7 @@ export default function StaffTabLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />

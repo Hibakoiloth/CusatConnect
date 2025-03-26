@@ -187,7 +187,7 @@ export default function LoginScreen() {
         ]}
       />
       
-      <View style={styles.container}>
+    <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
         
         <LinearGradient
@@ -241,15 +241,15 @@ export default function LoginScreen() {
                   <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="rgb(0, 0, 0)" />
                 </TouchableOpacity>
               </View>
-              
-              <TouchableOpacity 
+
+            <TouchableOpacity 
                 style={styles.forgotPassword} 
                 onPress={handlePasswordReset}
-              >
+            >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
+            </TouchableOpacity>
+
+            <TouchableOpacity 
                 style={styles.buttonWrapper} 
                 onPress={handleLogin}
                 disabled={loading}
@@ -275,11 +275,11 @@ export default function LoginScreen() {
                 <Text style={styles.signupText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={handleSignUp}>
                   <Text style={styles.signupLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
+      </View>
+    </View>
         
         <View style={styles.footer}>
           <Text style={styles.footerText}>© Cochin University of Science and Technology</Text>
@@ -500,4 +500,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Oswald-SemiBold',
     fontSize: 14,
   },
-});
+}); 

@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, StatusBar, Modal, Alert, TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useState, useEffect } from 'react';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Circular {
   id: number;
@@ -23,11 +24,25 @@ interface Stat {
   onPress?: () => void;
 }
 
+interface StaffProfile {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+}
+
 export default function StaffHomeScreen() {
   const router = useRouter();
   const [showActiveCirculars, setShowActiveCirculars] = useState(false);
-  const [activeCirculars, setActiveCirculars] = useState<Circular[]>([]);
+  const [activeCirculars, setActiveCirculars] = useState<any[]>([]);
   const [circularsCount, setCircularsCount] = useState('0');
+  const [showMenu, setShowMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState<StaffProfile | null>(null);
+  const [showCirculars, setShowCirculars] = useState(false);
 
   useEffect(() => {
     fetchActiveCircularsCount();
@@ -62,6 +77,25 @@ export default function StaffHomeScreen() {
     }
   };
 
+  const fetchOfficeStaffDetails = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('No user found');
+
+      const { data, error } = await supabase
+        .from('office_staff')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+
+      if (error) throw error;
+      setStaffProfile(data);
+    } catch (error: any) {
+      console.error('Error fetching office staff details:', error.message);
+    }
+  };
+
   const handleViewPDF = async (filePath: string) => {
     try {
       console.log('Opening file:', filePath);
@@ -85,12 +119,20 @@ export default function StaffHomeScreen() {
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      router.replace('/');
+      await supabase.auth.signOut();
+      await AsyncStorage.removeItem('user-session');
+      await AsyncStorage.removeItem('isAuthenticated');
+      await AsyncStorage.removeItem('userType');
+      router.replace('/login');
     } catch (error: any) {
       console.error('Error logging out:', error.message);
     }
+  };
+
+  const handleProfile = async () => {
+    await fetchOfficeStaffDetails();
+    setShowProfile(true);
+    setShowMenu(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -144,6 +186,39 @@ export default function StaffHomeScreen() {
     );
   };
 
+  const handleEdit = () => {
+    setEditedProfile(staffProfile);
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (!editedProfile) return;
+
+      const { error } = await supabase
+        .from('office_staff')
+        .update({
+          name: editedProfile.name,
+          department: editedProfile.department,
+        })
+        .eq('email', editedProfile.email);
+
+      if (error) throw error;
+
+      setStaffProfile(editedProfile);
+      setIsEditing(false);
+      alert('Profile updated successfully');
+    } catch (error: any) {
+      console.error('Error updating profile:', error.message);
+      alert('Failed to update profile');
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedProfile(staffProfile);
+    setIsEditing(false);
+  };
+
   const stats: Stat[] = [
     {
       title: 'Active Circulars',
@@ -173,17 +248,49 @@ export default function StaffHomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={styles.mainContent}>
-        <View style={styles.navbar}>
-          <ThemedText style={styles.navTitle}>CUSATCONNECT</ThemedText>
-          <Pressable style={styles.menuButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
+        <View style={styles.header}>
+          <Text style={styles.headerText}>CUSATCONNECT</Text>
+          <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
+            <Ionicons name="menu" size={28} color="white" />
           </Pressable>
         </View>
-        
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Hi Staff.</Text>
-        </View>
-        
+
+        {/* Dropdown Menu */}
+        <Modal
+          visible={showMenu}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowMenu(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setShowMenu(false)}
+          >
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => {
+                  handleProfile();
+                  setShowMenu(false);
+                }}
+              >
+                <Ionicons name="person-outline" size={24} color="#000" />
+                <Text style={styles.menuItemText}>Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => {
+                  handleLogout();
+                  setShowMenu(false);
+                }}
+              >
+                <Ionicons name="log-out-outline" size={24} color="#000" />
+                <Text style={styles.menuItemText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+
         <View style={styles.statsContainer}>
           {stats.map((stat, index) => (
             <TouchableOpacity 
@@ -276,6 +383,95 @@ export default function StaffHomeScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Profile Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showProfile}
+          onRequestClose={() => setShowProfile(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity 
+                  onPress={() => setShowProfile(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Office Staff Profile</Text>
+              </View>
+              
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+              ) : staffProfile ? (
+                <ScrollView style={styles.profileContent}>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Name</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.name}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, name: text} : null)}
+                        placeholder="Enter your name"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{staffProfile.name}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Department</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.profileInput}
+                        value={editedProfile?.department}
+                        onChangeText={(text) => setEditedProfile(prev => prev ? {...prev, department: text} : null)}
+                        placeholder="Enter your department"
+                      />
+                    ) : (
+                      <Text style={styles.profileValue}>{staffProfile.department}</Text>
+                    )}
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>Email</Text>
+                    <Text style={styles.profileValue}>{staffProfile.email}</Text>
+                  </View>
+                  
+                  {!isEditing ? (
+                    <TouchableOpacity 
+                      onPress={handleEdit}
+                      style={styles.editButtonContainer}
+                    >
+                      <Text style={styles.editButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.editActionsContainer}>
+                      <TouchableOpacity 
+                        onPress={handleCancel}
+                        style={styles.cancelButtonContainer}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        onPress={handleSave}
+                        style={styles.saveButtonContainer}
+                      >
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </ScrollView>
+              ) : (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Failed to load profile information</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );
@@ -290,38 +486,57 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: StatusBar.currentHeight,
   },
-  navbar: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 15,
-    paddingBottom: 10,
-    backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 30,
   },
-  navTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  headerText: {
+    fontSize: 20,
+    fontWeight: '400',
     color: '#fff',
+    lineHeight: 48,
     fontFamily: 'TTRamillas',
     letterSpacing: 1,
   },
   menuButton: {
     padding: 8,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 30,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    paddingTop: 80,
   },
-  headerText: {
-    fontSize: 45,
-    fontWeight: '400',
-    color: '#fff',
-    lineHeight: 48,
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    width: '40%',
+    alignSelf: 'flex-end',
+    marginRight: 20,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#000',
+    marginLeft: 12,
     fontFamily: 'TTRamillas',
-    letterSpacing: 1,
-    textAlign: 'left',
   },
   statsContainer: {
     paddingHorizontal: 16,
@@ -416,18 +631,25 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: '600',
     color: '#000',
     fontFamily: 'TTRamillas',
+    flex: 1,
+    textAlign: 'center',
   },
   closeButton: {
     padding: 5,
+    position: 'absolute',
+    left: 0,
+    zIndex: 1,
   },
   circularsList: {
     flex: 1,
@@ -491,5 +713,98 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 5,
+  },
+  profileContent: {
+    flex: 1,
+  },
+  profileSection: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+  },
+  profileLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+    fontFamily: 'TTRamillas',
+  },
+  profileValue: {
+    fontSize: 16,
+    color: '#000',
+    fontFamily: 'TTRamillas',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'TTRamillas',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF4444',
+    fontFamily: 'TTRamillas',
+  },
+  editButtonContainer: {
+    backgroundColor: '#9A8174',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'TTRamillas',
+  },
+  editActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  cancelButtonContainer: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  saveButtonContainer: {
+    flex: 1,
+    backgroundColor: '#9A8174',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontFamily: 'TTRamillas',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'TTRamillas',
+  },
+  profileInput: {
+    fontSize: 16,
+    color: '#000',
+    fontFamily: 'TTRamillas',
+    borderBottomWidth: 1,
+    borderBottomColor: '#9A8174',
+    paddingVertical: 5,
   },
 }); 
